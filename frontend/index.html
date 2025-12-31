@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Simulator with OSPF</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e6e6e6;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(0, 20, 40, 0.9);
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            border-bottom: 2px solid #00a8ff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo i {
+            color: #00a8ff;
+            font-size: 28px;
+        }
+
+        .logo h1 {
+            font-size: 24px;
+            background: linear-gradient(90deg, #00a8ff, #00ffaa);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .sim-controls {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #0066cc, #004d99);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: linear-gradient(135deg, #0077ee, #0055aa);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 120, 255, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #cc3300, #992200);
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #ee4400, #aa3300);
+        }
+
+        /* Main container */
+        .container {
+            display: flex;
+            height: calc(100vh - 120px);
+        }
+
+        /* Left panel - Device Info & CLI */
+        .left-panel {
+            width: 400px;
+            background: rgba(10, 25, 47, 0.95);
+            border-right: 2px solid #0a3d62;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: rgba(0, 40, 85, 0.9);
+            padding: 15px;
+            border-bottom: 1px solid #00a8ff;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow: auto;
+            padding: 15px;
+        }
+
+        /* Device info */
+        .device-info {
+            background: rgba(20, 40, 70, 0.7);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-left: 4px solid #00a8ff;
+        }
+
+        .device-info h3 {
+            color: #00a8ff;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .device-property {
+            margin: 8px 0;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px dashed rgba(100, 150, 255, 0.2);
+            padding-bottom: 5px;
+        }
+
+        /* CLI Interface */
+        .cli-container {
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #333;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cli-header {
+            background: #222;
+            padding: 10px 15px;
+            border-bottom: 1px solid #444;
+            font-family: monospace;
+            color: #00ffaa;
+            font-weight: bold;
+        }
+
+        .cli-output {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #ccc;
+            background: #000;
+        }
+
+        .cli-line {
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+
+        .cli-line.cmd {
+            color: #00ffaa;
+        }
+
+        .cli-line.info {
+            color: #66ccff;
+        }
+
+        .cli-line.error {
+            color: #ff6666;
+        }
+
+        .cli-line.ospf-step {
+            color: #ffcc00;
+            font-weight: bold;
+        }
+
+        .cli-input-container {
+            display: flex;
+            border-top: 1px solid #444;
+            background: #111;
+        }
+
+        .cli-prompt {
+            padding: 12px 15px;
+            background: #222;
+            color: #00ffaa;
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        .cli-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: monospace;
+            font-size: 14px;
+            padding: 12px;
+            outline: none;
+        }
+
+        /* Center workspace */
+        .workspace-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #workspace {
+            width: 100%;
+            height: 100%;
+            background: 
+                linear-gradient(rgba(10, 25, 47, 0.9), rgba(10, 25, 47, 0.9)),
+                repeating-linear-gradient(0deg, transparent, transparent 19px, rgba(50, 100, 150, 0.1) 20px),
+                repeating-linear-gradient(90deg, transparent, transparent 19px, rgba(50, 100, 150, 0.1) 20px);
+        }
+
+        .workspace-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .workspace-btn {
+            background: rgba(0, 40, 85, 0.9);
+            color: white;
+            border: 1px solid #00a8ff;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .workspace-btn:hover {
+            background: rgba(0, 80, 160, 0.9);
+            transform: scale(1.1);
+        }
+
+        /* Bottom toolbar */
+        .toolbar {
+            height: 60px;
+            background: rgba(0, 20, 40, 0.95);
+            border-top: 2px solid #00a8ff;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 25px;
+            overflow-x: auto;
+        }
+
+        .tool-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-right: 25px;
+            border-right: 1px solid rgba(100, 150, 255, 0.3);
+        }
+
+        .tool-group:last-child {
+            border-right: none;
+        }
+
+        .tool-label {
+            color: #66ccff;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .tool-btn {
+            background: rgba(30, 60, 100, 0.7);
+            color: white;
+            border: 1px solid rgba(100, 150, 255, 0.3);
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tool-btn:hover {
+            background: rgba(50, 100, 160, 0.9);
+            border-color: #00a8ff;
+            transform: translateY(-3px);
+        }
+
+        .tool-btn.active {
+            background: rgba(0, 120, 255, 0.9);
+            border-color: #00ffaa;
+            box-shadow: 0 0 15px rgba(0, 255, 170, 0.5);
+        }
+
+        .tool-btn i {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .tool-btn span {
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .tool-btn.router { color: #ff9966; }
+        .tool-btn.switch { color: #66ccff; }
+        .tool-btn.pc { color: #99ff99; }
+        .tool-btn.laptop { color: #ffcc66; }
+        .tool-btn.phone { color: #cc99ff; }
+        .tool-btn.server { color: #ff6666; }
+        .tool-btn.connect { color: #00ffaa; }
+        .tool-btn.ping { color: #ffff66; }
+
+        /* Ping animation overlay */
+        .ping-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 500;
+        }
+
+        .ping-packet {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, #ffff00, #ffaa00);
+            border-radius: 50%;
+            box-shadow: 0 0 15px #ffaa00;
+            z-index: 501;
+            transform: translate(-50%, -50%);
+            transition: left 0.4s linear, top 0.4s linear;
+        }
+
+        .ospf-packet {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            box-shadow: 0 0 10px;
+            z-index: 502;
+            transform: translate(-50%, -50%);
+            transition: left 0.5s linear, top 0.5s linear;
+        }
+
+        /* Context menu */
+        .context-menu {
+            position: absolute;
+            background: rgba(20, 40, 70, 0.95);
+            border: 1px solid #00a8ff;
+            border-radius: 8px;
+            padding: 10px 0;
+            z-index: 2000;
+            min-width: 200px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            display: none;
+        }
+
+        .context-menu-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            color: #e6e6e6;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.2s;
+        }
+
+        .context-menu-item:hover {
+            background: rgba(0, 120, 255, 0.3);
+        }
+
+        .context-menu-item i {
+            color: #00a8ff;
+            width: 20px;
+        }
+
+        /* Modal dialogs */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 12px;
+            padding: 30px;
+            min-width: 400px;
+            border: 2px solid #00a8ff;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+        }
+
+        .modal-header {
+            font-size: 22px;
+            color: #00a8ff;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #66ccff;
+            font-weight: 600;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(30, 60, 100, 0.7);
+            border: 1px solid rgba(100, 150, 255, 0.5);
+            border-radius: 6px;
+            color: white;
+            font-size: 16px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #00ffaa;
+            box-shadow: 0 0 10px rgba(0, 255, 170, 0.3);
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        /* Status bar */
+        .status-bar {
+            height: 40px;
+            background: rgba(0, 30, 60, 0.9);
+            border-top: 1px solid rgba(100, 150, 255, 0.3);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            font-size: 14px;
+            color: #99ccff;
+        }
+
+        .status-item {
+            margin-right: 30px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-item i {
+            color: #00ffaa;
+        }
+
+        /* OSPF Step Panel */
+        .ospf-step-panel {
+            position: absolute;
+            bottom: 70px;
+            left: 20px;
+            background: rgba(0, 30, 60, 0.95);
+            border: 1px solid #00a8ff;
+            border-radius: 8px;
+            padding: 15px;
+            width: 300px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .ospf-step-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .ospf-step-title {
+            color: #00ffaa;
+            font-weight: bold;
+        }
+
+        .ospf-step-content {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .step-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            background: rgba(20, 40, 70, 0.5);
+            border-radius: 4px;
+            border-left: 3px solid #00a8ff;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .step-item:hover {
+            background: rgba(30, 60, 100, 0.7);
+        }
+
+        .step-item.active {
+            border-left-color: #00ffaa;
+            background: rgba(0, 100, 200, 0.3);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .left-panel {
+                width: 350px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .left-panel {
+                width: 100%;
+                height: 300px;
+                border-right: none;
+                border-bottom: 2px solid #0a3d62;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">
+            <i class="fas fa-project-diagram"></i>
+            <h1>Network Simulator with OSPF</h1>
+        </div>
+        <div class="sim-controls">
+            <button class="btn" id="btn-new">
+                <i class="fas fa-file"></i> New
+            </button>
+            <button class="btn" id="btn-save">
+                <i class="fas fa-save"></i> Save
+            </button>
+            <button class="btn" id="btn-load">
+                <i class="fas fa-folder-open"></i> Load
+            </button>
+            <button class="btn btn-danger" id="btn-clear">
+                <i class="fas fa-trash"></i> Clear All
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Left Panel - Device Info & CLI -->
+        <div class="left-panel">
+            <div class="panel-header">
+                <span>Device Information</span>
+                <button class="btn" id="btn-refresh-info" style="padding: 5px 10px; font-size: 12px;">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+            <div class="panel-content" id="device-info-content">
+                <!-- Device info will be dynamically inserted here -->
+            </div>
+            
+            <div class="panel-header">
+                <span>Router CLI</span>
+                <span id="cli-router-name">Not Selected</span>
+            </div>
+            <div class="cli-container">
+                <div class="cli-header">
+                    Cisco-like CLI Interface
+                </div>
+                <div class="cli-output" id="cli-output">
+                    <div class="cli-line info">Network Simulator CLI Ready</div>
+                    <div class="cli-line info">Type 'help' for available commands</div>
+                </div>
+                <div class="cli-input-container">
+                    <div class="cli-prompt" id="cli-prompt">Router#</div>
+                    <input type="text" class="cli-input" id="cli-input" placeholder="Type commands here...">
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Workspace -->
+        <div class="workspace-container">
+            <div id="workspace"></div>
+            
+            <!-- OSPF Step Panel -->
+            <div class="ospf-step-panel" id="ospf-step-panel">
+                <div class="ospf-step-header">
+                    <div class="ospf-step-title">OSPF Steps</div>
+                    <button class="btn" id="btn-close-steps" style="padding: 3px 8px; font-size: 12px;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="ospf-step-content" id="ospf-step-content">
+                    <!-- OSPF steps will be added here -->
+                </div>
+            </div>
+            
+            <div class="workspace-controls">
+                <div class="workspace-btn" id="btn-zoom-in" title="Zoom In">
+                    <i class="fas fa-search-plus"></i>
+                </div>
+                <div class="workspace-btn" id="btn-zoom-out" title="Zoom Out">
+                    <i class="fas fa-search-minus"></i>
+                </div>
+                <div class="workspace-btn" id="btn-fit-view" title="Fit to View">
+                    <i class="fas fa-expand"></i>
+                </div>
+                <div class="workspace-btn" id="btn-reset-view" title="Reset View">
+                    <i class="fas fa-sync-alt"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Toolbar -->
+    <div class="toolbar">
+        <div class="tool-group">
+            <div class="tool-label">Devices:</div>
+            <div class="tool-btn router active" id="tool-router" title="Router">
+                <i class="fas fa-route"></i>
+                <span>Router</span>
+            </div>
+            <div class="tool-btn switch" id="tool-switch" title="Switch">
+                <i class="fas fa-sitemap"></i>
+                <span>Switch</span>
+            </div>
+            <div class="tool-btn pc" id="tool-pc" title="PC">
+                <i class="fas fa-desktop"></i>
+                <span>PC</span>
+            </div>
+            <div class="tool-btn laptop" id="tool-laptop" title="Laptop">
+                <i class="fas fa-laptop"></i>
+                <span>Laptop</span>
+            </div>
+            <div class="tool-btn phone" id="tool-phone" title="Phone">
+                <i class="fas fa-mobile-alt"></i>
+                <span>Phone</span>
+            </div>
+            <div class="tool-btn server" id="tool-server" title="Server">
+                <i class="fas fa-server"></i>
+                <span>Server</span>
+            </div>
+        </div>
+        
+        <div class="tool-group">
+            <div class="tool-label">Tools:</div>
+            <div class="tool-btn connect" id="tool-connect" title="Connect Devices">
+                <i class="fas fa-link"></i>
+                <span>Connect</span>
+            </div>
+            <div class="tool-btn ping" id="tool-ping" title="Ping Tool">
+                <i class="fas fa-broadcast-tower"></i>
+                <span>Ping</span>
+            </div>
+            <div class="tool-btn" id="tool-select" title="Select Mode">
+                <i class="fas fa-mouse-pointer"></i>
+                <span>Select</span>
+            </div>
+            <div class="tool-btn" id="tool-delete" title="Delete">
+                <i class="fas fa-trash"></i>
+                <span>Delete</span>
+            </div>
+        </div>
+        
+        <div class="tool-group">
+            <div class="tool-label">View:</div>
+            <div class="tool-btn" id="btn-show-ospf" title="Show OSPF Areas">
+                <i class="fas fa-network-wired"></i>
+                <span>OSPF</span>
+            </div>
+            <div class="tool-btn" id="btn-show-routing" title="Show Routing Tables">
+                <i class="fas fa-table"></i>
+                <span>Routing</span>
+            </div>
+            <div class="tool-btn" id="btn-simulate-ospf" title="Simulate OSPF">
+                <i class="fas fa-play"></i>
+                <span>Run OSPF</span>
+            </div>
+            <div class="tool-btn" id="btn-step-ospf" title="Step-by-Step OSPF">
+                <i class="fas fa-step-forward"></i>
+                <span>Step OSPF</span>
+            </div>
+            <div class="tool-btn" id="btn-show-steps" title="Show OSPF Steps">
+                <i class="fas fa-list-ol"></i>
+                <span>Steps</span>
+            </div>
+        </div>
+        
+        <div class="tool-group">
+            <div class="tool-label">Examples:</div>
+            <div class="tool-btn" id="btn-example-single" title="Load Single Area OSPF">
+                <i class="fas fa-network-wired"></i>
+                <span>Single Area</span>
+            </div>
+            <div class="tool-btn" id="btn-example-multi" title="Load Multi-Area OSPF">
+                <i class="fas fa-globe"></i>
+                <span>Multi-Area</span>
+            </div>
+            <div class="tool-btn" id="btn-example-complex" title="Load Complex Network">
+                <i class="fas fa-sitemap"></i>
+                <span>Complex</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="status-item">
+            <i class="fas fa-microchip"></i>
+            <span>Devices: <span id="status-devices">0</span></span>
+        </div>
+        <div class="status-item">
+            <i class="fas fa-link"></i>
+            <span>Links: <span id="status-links">0</span></span>
+        </div>
+        <div class="status-item">
+            <i class="fas fa-network-wired"></i>
+            <span>OSPF Areas: <span id="status-areas">0</span></span>
+        </div>
+        <div class="status-item">
+            <i class="fas fa-bolt"></i>
+            <span>Mode: <span id="status-mode">Select</span></span>
+        </div>
+        <div class="status-item" style="margin-left: auto;">
+            <i class="fas fa-info-circle"></i>
+            <span id="status-message">Ready</span>
+        </div>
+    </div>
+
+    <!-- Ping Animation Overlay -->
+    <div class="ping-overlay" id="ping-overlay"></div>
+    <div class="ping-overlay" id="ospf-overlay"></div>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="context-menu">
+        <!-- Device Context Items -->
+        <div class="context-menu-item" id="ctx-config">
+            <i class="fas fa-cog"></i> Configure Device
+        </div>
+        <div class="context-menu-item" id="ctx-cli">
+            <i class="fas fa-terminal"></i> Open CLI
+        </div>
+        <div class="context-menu-item" id="ctx-ping">
+            <i class="fas fa-broadcast-tower"></i> Ping from here
+        </div>
+        <div class="context-menu-item" id="ctx-delete">
+            <i class="fas fa-trash"></i> Delete Device
+        </div>
+        <div class="context-menu-item" id="ctx-info">
+            <i class="fas fa-info-circle"></i> Show Info
+        </div>
+        <!-- Link Context Items -->
+        <div class="context-menu-item" id="ctx-edit-link" style="display: none;">
+            <i class="fas fa-edit"></i> Edit Link
+        </div>
+        <div class="context-menu-item" id="ctx-delete-link" style="display: none;">
+            <i class="fas fa-trash"></i> Delete Link
+        </div>
+        <div class="context-menu-item" id="ctx-link-info" style="display: none;">
+            <i class="fas fa-info-circle"></i> Show Link Info
+        </div>
+    </div>
+
+    <!-- Connection Modal -->
+    <div class="modal" id="connection-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <i class="fas fa-link"></i>
+                <span>Connect Devices</span>
+            </div>
+            <div class="form-group">
+                <label>Device 1:</label>
+                <input type="text" class="form-input" id="conn-device1" readonly>
+            </div>
+            <div class="form-group">
+                <label>Device 2:</label>
+                <input type="text" class="form-input" id="conn-device2" readonly>
+            </div>
+            <div class="form-group">
+                <label>Link Cost (OSPF Metric):</label>
+                <input type="number" class="form-input" id="conn-cost" value="10" min="1" max="65535">
+            </div>
+            <div class="form-group">
+                <label>OSPF Area (0 for backbone):</label>
+                <input type="number" class="form-input" id="conn-area" value="0" min="0" max="4294967295">
+            </div>
+            <div class="form-group">
+                <label>Link Type:</label>
+                <select class="form-input" id="conn-type">
+                    <option value="access">Access Link</option>
+                    <option value="ospf">OSPF Link</option>
+                </select>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn" id="btn-conn-cancel">Cancel</button>
+                <button class="btn" id="btn-conn-ok">Connect</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ping Modal -->
+    <div class="modal" id="ping-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <i class="fas fa-broadcast-tower"></i>
+                <span>Ping Test</span>
+            </div>
+            <div class="form-group">
+                <label>Source Device:</label>
+                <input type="text" class="form-input" id="ping-src" readonly>
+            </div>
+            <div class="form-group">
+                <label>Destination Device:</label>
+                <select class="form-input" id="ping-dst">
+                    <!-- Options will be populated dynamically -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Ping Count (1-10):</label>
+                <input type="number" class="form-input" id="ping-count" value="4" min="1" max="10">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn" id="btn-ping-cancel">Cancel</button>
+                <button class="btn" id="btn-ping-start">Start Ping</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Link Modal -->
+    <div class="modal" id="edit-link-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <i class="fas fa-edit"></i>
+                <span>Edit Link Properties</span>
+            </div>
+            <div class="form-group">
+                <label>Link ID:</label>
+                <input type="text" class="form-input" id="edit-link-id" readonly>
+            </div>
+            <div class="form-group">
+                <label>Connected Devices:</label>
+                <input type="text" class="form-input" id="edit-link-devices" readonly>
+            </div>
+            <div class="form-group">
+                <label>Link Cost (OSPF Metric):</label>
+                <input type="number" class="form-input" id="edit-link-cost" value="10" min="1" max="65535">
+            </div>
+            <div class="form-group">
+                <label>OSPF Area (0 for backbone):</label>
+                <input type="number" class="form-input" id="edit-link-area" value="0" min="0" max="4294967295">
+            </div>
+            <div class="form-group">
+                <label>Link Type:</label>
+                <select class="form-input" id="edit-link-type">
+                    <option value="access">Access Link</option>
+                    <option value="ospf">OSPF Link</option>
+                </select>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn" id="btn-edit-cancel">Cancel</button>
+                <button class="btn" id="btn-edit-save">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.25.0/cytoscape.min.js"></script>
+    <script src="network-simulator.js"></script>
+</body>
+</html>
