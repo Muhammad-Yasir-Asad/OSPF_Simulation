@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Any
 import networkx as nx
-import uvicorn
 from datetime import datetime
 import math
 import time
@@ -542,5 +541,3 @@ async def dijkstra_example():
         "explanation": "Dijkstra's algorithm finds the shortest path from a source node to all other nodes in a weighted graph."
     }
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
