@@ -1,5 +1,5 @@
-
-
+// network-simulator.js
+// Main JavaScript file for Network Simulator with OSPF - COMPLETE UPDATED VERSION
 
 class NetworkSimulator {
     constructor() {
@@ -17,7 +17,7 @@ class NetworkSimulator {
         this.ospfSteps = [];
         this.isOSPFAnimating = false;
         
-        
+        // Device counter by type
         this.deviceCounters = {
             router: 1,
             switch: 1,
@@ -39,7 +39,7 @@ class NetworkSimulator {
     }
 
     initWorkspace() {
-        
+        // Initialize Cytoscape for network visualization
         this.cy = cytoscape({
             container: document.getElementById('workspace'),
             elements: [],
@@ -257,7 +257,7 @@ class NetworkSimulator {
             wheelSensitivity: 0.2
         });
 
-        
+        // Add workspace event listeners
         this.cy.on('tap', 'node', (evt) => {
             const node = evt.target;
             this.selectDevice(node.id());
@@ -270,7 +270,7 @@ class NetworkSimulator {
 
         this.cy.on('tap', (evt) => {
             if (evt.target === this.cy) {
-                
+                // Clicked on background
                 this.deselectDevice();
                 this.deselectLink();
                 
@@ -292,7 +292,7 @@ class NetworkSimulator {
             this.showLinkContextMenu(evt.originalEvent, edge.id());
         });
 
-        
+        // Update positions when nodes are moved
         this.cy.on('position', 'node', (evt) => {
             const node = evt.target;
             const device = this.devices.get(node.id());
@@ -303,14 +303,14 @@ class NetworkSimulator {
     }
 
     initEventListeners() {
-        
+        // Tool buttons
         document.querySelectorAll('.tool-btn').forEach(btn => {
             if (btn.id.startsWith('tool-')) {
                 btn.addEventListener('click', () => this.selectTool(btn.id.replace('tool-', '')));
             }
         });
 
-        
+        // Control buttons
         document.getElementById('btn-new').addEventListener('click', () => this.newProject());
         document.getElementById('btn-clear').addEventListener('click', () => this.clearAll());
         document.getElementById('btn-refresh-info').addEventListener('click', () => this.refreshDeviceInfo());
@@ -321,16 +321,16 @@ class NetworkSimulator {
         document.getElementById('btn-show-routing').addEventListener('click', () => this.showRoutingTables());
         document.getElementById('btn-close-steps').addEventListener('click', () => this.hideStepPanel());
 
-        
+        // Example network buttons
         document.getElementById('btn-example-single').addEventListener('click', () => this.loadSingleAreaExample());
         document.getElementById('btn-example-multi').addEventListener('click', () => this.loadMultiAreaExample());
         document.getElementById('btn-example-complex').addEventListener('click', () => this.loadComplexExample());
 
-        
+        // Save/Load buttons
         document.getElementById('btn-save').addEventListener('click', () => this.saveProject());
         document.getElementById('btn-load').addEventListener('click', () => this.loadProject());
 
-        
+        // Workspace controls
         document.getElementById('btn-zoom-in').addEventListener('click', () => this.cy.zoom(this.cy.zoom() * 1.2));
         document.getElementById('btn-zoom-out').addEventListener('click', () => this.cy.zoom(this.cy.zoom() * 0.8));
         document.getElementById('btn-fit-view').addEventListener('click', () => this.cy.fit());
@@ -339,26 +339,26 @@ class NetworkSimulator {
             this.cy.center();
         });
 
-        
+        // CLI input
         document.getElementById('cli-input').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 this.processCLICommand();
             }
         });
 
-        
+        // Connection modal
         document.getElementById('btn-conn-cancel').addEventListener('click', () => this.hideModal('connection-modal'));
         document.getElementById('btn-conn-ok').addEventListener('click', () => this.createConnection());
 
-        
+        // Ping modal
         document.getElementById('btn-ping-cancel').addEventListener('click', () => this.hideModal('ping-modal'));
         document.getElementById('btn-ping-start').addEventListener('click', () => this.startPing());
 
-        
+        // Edit Link modal
         document.getElementById('btn-edit-cancel').addEventListener('click', () => this.hideModal('edit-link-modal'));
         document.getElementById('btn-edit-save').addEventListener('click', () => this.saveLinkChanges());
 
-        
+        // Context menu items
         document.getElementById('ctx-config').addEventListener('click', () => this.configureDevice());
         document.getElementById('ctx-cli').addEventListener('click', () => this.openCLI());
         document.getElementById('ctx-ping').addEventListener('click', () => this.startPingFromDevice());
@@ -368,14 +368,14 @@ class NetworkSimulator {
         document.getElementById('ctx-delete-link').addEventListener('click', () => this.deleteSelectedLink());
         document.getElementById('ctx-link-info').addEventListener('click', () => this.showLinkInfo());
 
-        
+        // Close context menu on click outside
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.context-menu')) {
                 document.getElementById('context-menu').style.display = 'none';
             }
         });
 
-        
+        // Close step panel on escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 this.hideStepPanel();
@@ -384,7 +384,7 @@ class NetworkSimulator {
     }
 
     initToolbar() {
-        
+        // Set default active tool
         this.selectTool('router');
     }
 
@@ -392,16 +392,16 @@ class NetworkSimulator {
         this.currentMode = tool === 'select' ? 'select' : 'place';
         this.selectedTool = tool;
         
-        
+        // Update UI
         document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
         const toolBtn = document.getElementById(`tool-${tool}`);
         if (toolBtn) toolBtn.classList.add('active');
         
-        
+        // Update status
         document.getElementById('status-mode').textContent = 
             this.currentMode === 'place' ? `Place ${tool}` : 'Select';
         
-        
+        // Special handling for connect mode
         if (tool === 'connect') {
             this.enterConnectMode();
         } else if (tool === 'ping') {
@@ -417,7 +417,7 @@ class NetworkSimulator {
         const type = this.selectedTool;
         const id = `${type}${this.deviceCounters[type]++}`;
         
-        
+        // Create device object
         const device = {
             id: id,
             type: type,
@@ -439,10 +439,10 @@ class NetworkSimulator {
             }
         };
         
-        
+        // Add to devices map
         this.devices.set(id, device);
         
-        
+        // Add to cytoscape
         this.cy.add({
             group: 'nodes',
             data: { 
@@ -454,33 +454,33 @@ class NetworkSimulator {
             classes: type
         });
         
-        
+        // Update status
         this.updateStatus();
         this.logCLI(`Created ${type}: ${id} at (${Math.round(position.x)}, ${Math.round(position.y)})`);
         
-        
+        // Select the new device
         this.selectDevice(id);
     }
 
     selectDevice(deviceId) {
-        
+        // Deselect previous
         this.deselectDevice();
         this.deselectLink();
         
-        
+        // Select new
         this.selectedDevice = deviceId;
         const node = this.cy.getElementById(deviceId);
         node.addClass('selected');
         
-        
+        // Update device info
         this.updateDeviceInfo();
         
-        
+        // If in connect mode, handle connection
         if (this.currentMode === 'place' && this.selectedTool === 'connect') {
             this.handleConnectionSelection(deviceId);
         }
         
-        
+        // If in ping mode, handle ping source
         if (this.currentMode === 'place' && this.selectedTool === 'ping') {
             this.handlePingSelection(deviceId);
         }
@@ -496,16 +496,16 @@ class NetworkSimulator {
     }
 
     selectLink(linkId) {
-        
+        // Deselect device and previous link
         this.deselectDevice();
         this.deselectLink();
         
-        
+        // Select new link
         this.selectedLink = linkId;
         const edge = this.cy.getElementById(linkId);
         edge.addClass('selected');
         
-        
+        // Update link info display
         this.updateLinkInfo();
         
         this.logCLI(`Selected link: ${linkId}`);
@@ -522,7 +522,7 @@ class NetworkSimulator {
     showDeviceContextMenu(event, deviceId) {
         const menu = document.getElementById('context-menu');
         
-        
+        // Show device items, hide link items
         document.getElementById('ctx-config').style.display = 'block';
         document.getElementById('ctx-cli').style.display = 'block';
         document.getElementById('ctx-ping').style.display = 'block';
@@ -542,7 +542,7 @@ class NetworkSimulator {
     showLinkContextMenu(event, linkId) {
         const menu = document.getElementById('context-menu');
         
-        
+        // Show link items, hide device items
         document.getElementById('ctx-config').style.display = 'none';
         document.getElementById('ctx-cli').style.display = 'none';
         document.getElementById('ctx-ping').style.display = 'none';
@@ -576,11 +576,11 @@ class NetworkSimulator {
         } else if (this.connectionState.step === 1) {
             this.connectionState.device2 = deviceId;
             
-            
+            // Show connection modal
             document.getElementById('conn-device1').value = this.connectionState.device1;
             document.getElementById('conn-device2').value = this.connectionState.device2;
             
-            
+            // Set default values based on device types
             const dev1 = this.devices.get(this.connectionState.device1);
             const dev2 = this.devices.get(this.connectionState.device2);
             
@@ -596,7 +596,7 @@ class NetworkSimulator {
             
             this.showModal('connection-modal');
             
-            
+            // Reset for next connection
             this.connectionState = { step: 0, device1: null, device2: null };
             this.selectTool('select');
         }
@@ -609,7 +609,7 @@ class NetworkSimulator {
         const area = parseInt(document.getElementById('conn-area').value);
         const type = document.getElementById('conn-type').value;
         
-        
+        // Check if link already exists between these devices
         const existingLink = Array.from(this.links.values()).find(link => 
             (link.source === device1 && link.target === device2) ||
             (link.source === device2 && link.target === device1)
@@ -628,10 +628,10 @@ class NetworkSimulator {
             }
         }
         
-        
+        // Create link ID
         const linkId = `link${this.nextLinkId++}`;
         
-        
+        // Create link object
         const link = {
             id: linkId,
             source: device1,
@@ -642,10 +642,10 @@ class NetworkSimulator {
             label: type === 'ospf' ? `Cost: ${cost}, Area: ${area}` : 'Access'
         };
         
-        
+        // Add to links map
         this.links.set(linkId, link);
         
-        
+        // Update device interfaces
         const dev1 = this.devices.get(device1);
         const dev2 = this.devices.get(device2);
         
@@ -670,7 +670,7 @@ class NetworkSimulator {
         dev1.interfaces.push(intf1);
         dev2.interfaces.push(intf2);
         
-        
+        // Add OSPF neighbor if applicable
         if (type === 'ospf' && dev1.type === 'router' && dev2.type === 'router') {
             if (!dev1.ospf) dev1.ospf = { enabled: true, area: 0, neighbors: [], lsdb: {}, routingTable: [] };
             if (!dev2.ospf) dev2.ospf = { enabled: true, area: 0, neighbors: [], lsdb: {}, routingTable: [] };
@@ -689,7 +689,7 @@ class NetworkSimulator {
             });
         }
         
-        
+        // Add to cytoscape
         this.cy.add({
             group: 'edges',
             data: {
@@ -703,12 +703,12 @@ class NetworkSimulator {
             }
         });
         
-        
+        // Hide modal and update
         this.hideModal('connection-modal');
         this.updateStatus();
         this.logCLI(`Created ${type} link between ${device1} and ${device2}`);
         
-        
+        // Trigger OSPF simulation if routers are connected
         if (type === 'ospf' && dev1.type === 'router' && dev2.type === 'router') {
             setTimeout(() => this.simulateOSPF(), 500);
         }
@@ -728,7 +728,7 @@ class NetworkSimulator {
             this.pingState.source = deviceId;
             this.pingState.step = 1;
             
-            
+            // Populate destination dropdown
             const dropdown = document.getElementById('ping-dst');
             dropdown.innerHTML = '';
             
@@ -741,11 +741,11 @@ class NetworkSimulator {
                 }
             });
             
-            
+            // Show ping modal
             document.getElementById('ping-src').value = deviceId;
             this.showModal('ping-modal');
             
-            
+            // Reset for next ping
             this.pingState = { step: 0, source: null, destination: null };
             this.selectTool('select');
         }
@@ -762,7 +762,7 @@ class NetworkSimulator {
         
         this.hideModal('ping-modal');
         
-        
+        // Find path using Dijkstra's algorithm
         const path = this.findShortestPath(source, destination);
         
         if (path && path.length > 0) {
@@ -771,7 +771,7 @@ class NetworkSimulator {
             this.logCLI(`Total hops: ${path.length - 1}`);
             this.logCLI(`Status: Success`);
             
-            
+            // Animate ping
             this.animatePing(path, count);
         } else {
             this.logCLI(`Ping from ${source} to ${destination}: Failed - No path found`, 'error');
@@ -779,12 +779,12 @@ class NetworkSimulator {
     }
 
     findShortestPath(source, destination) {
-        
+        // Simple Dijkstra's implementation
         const distances = new Map();
         const previous = new Map();
         const unvisited = new Set();
         
-        
+        // Initialize distances
         this.devices.forEach((device, id) => {
             distances.set(id, id === source ? 0 : Infinity);
             previous.set(id, null);
@@ -792,7 +792,7 @@ class NetworkSimulator {
         });
         
         while (unvisited.size > 0) {
-            
+            // Find node with smallest distance
             let current = null;
             let minDist = Infinity;
             
@@ -807,7 +807,7 @@ class NetworkSimulator {
             
             unvisited.delete(current);
             
-            
+            // Get neighbors through links
             this.links.forEach(link => {
                 if (link.source === current || link.target === current) {
                     const neighbor = link.source === current ? link.target : link.source;
@@ -822,7 +822,7 @@ class NetworkSimulator {
             });
         }
         
-        
+        // Reconstruct path
         const path = [];
         let current = destination;
         
@@ -838,15 +838,15 @@ class NetworkSimulator {
         const overlay = document.getElementById('ping-overlay');
         overlay.innerHTML = '';
         
-        
+        // Clear previous highlights
         this.cy.edges().removeClass('ping-active');
         
-        
+        // Highlight path edges
         for (let i = 0; i < path.length - 1; i++) {
             const source = path[i];
             const target = path[i + 1];
             
-            
+            // Find edge between these nodes
             const edges = this.cy.edges().filter(edge => 
                 (edge.data('source') === source && edge.data('target') === target) ||
                 (edge.data('source') === target && edge.data('target') === source)
@@ -855,12 +855,12 @@ class NetworkSimulator {
             edges.forEach(edge => edge.addClass('ping-active'));
         }
         
-        
+        // Create ping packet animation
         const packet = document.createElement('div');
         packet.className = 'ping-packet';
         overlay.appendChild(packet);
         
-        
+        // Get workspace bounding rect for coordinate conversion
         const workspaceRect = document.getElementById('workspace').getBoundingClientRect();
         
         let pingCount = 0;
@@ -870,15 +870,15 @@ class NetworkSimulator {
             let currentHop = 0;
             const animateStep = () => {
                 if (currentHop >= pathToUse.length) {
-                    
-                    if (forward && pingCount < count * 2) { 
+                    // End of this trip
+                    if (forward && pingCount < count * 2) { // Send reply
                         pingCount++;
                         setTimeout(() => animateOneWay(false), 300);
-                    } else if (pingCount < count * 2 - 1) { 
+                    } else if (pingCount < count * 2 - 1) { // Send next ping
                         pingCount++;
                         setTimeout(() => animateOneWay(true), 300);
                     } else {
-                        
+                        // Clean up after last ping
                         setTimeout(() => {
                             this.cy.edges().removeClass('ping-active');
                             overlay.innerHTML = '';
@@ -896,10 +896,10 @@ class NetworkSimulator {
                     return;
                 }
                 
-                
+                // Get current rendered position
                 const renderedPos = node.renderedPosition();
                 
-                
+                // Convert to absolute coordinates
                 const absoluteX = renderedPos.x + workspaceRect.left;
                 const absoluteY = renderedPos.y + workspaceRect.top;
                 
@@ -913,17 +913,17 @@ class NetworkSimulator {
             animateStep();
         };
         
-        
+        // Start first ping
         animateOneWay(true);
     }
 
-    
+    // ========== EXAMPLE NETWORKS ==========
 
     loadSingleAreaExample() {
         this.clearAll();
         this.logCLI('Loading Single Area OSPF Example...', 'info');
         
-        
+        // Create 4 routers in area 0
         const routers = [];
         for (let i = 1; i <= 4; i++) {
             const routerId = `R${i}`;
@@ -945,7 +945,7 @@ class NetworkSimulator {
             };
             this.devices.set(routerId, router);
             
-            
+            // Add to cytoscape
             this.cy.add({
                 group: 'nodes',
                 data: {
@@ -958,7 +958,7 @@ class NetworkSimulator {
             routers.push(router);
         }
         
-        
+        // Create connections (partial mesh)
         const connections = [
             { from: 'R1', to: 'R2', cost: 10 },
             { from: 'R2', to: 'R3', cost: 20 },
@@ -972,7 +972,7 @@ class NetworkSimulator {
             this.createExampleLink(conn.from, conn.to, conn.cost, 0, linkId);
         });
         
-        
+        // Add some end devices
         const devices = [
             { id: 'PC1', type: 'pc', router: 'R1', ip: '192.168.10.10', x: 150, y: 350 },
             { id: 'Server1', type: 'server', router: 'R2', ip: '192.168.20.10', x: 300, y: 350 },
@@ -994,7 +994,7 @@ class NetworkSimulator {
             
             this.devices.set(deviceId, deviceObj);
             
-            
+            // Add to cytoscape
             this.cy.add({
                 group: 'nodes',
                 data: {
@@ -1005,7 +1005,7 @@ class NetworkSimulator {
                 position: { x: device.x, y: device.y }
             });
             
-            
+            // Connect to router
             const linkId = `access_${deviceId}`;
             this.createExampleLink(device.router, deviceId, 1, 0, linkId, 'access');
         });
@@ -1021,7 +1021,7 @@ class NetworkSimulator {
         this.clearAll();
         this.logCLI('Loading Multi-Area OSPF Example...', 'info');
         
-        
+        // Create Area Border Routers (ABRs) - connected to backbone
         const abrPositions = [
             { id: 'ABR1', x: 200, y: 200, area: 0 },
             { id: 'ABR2', x: 400, y: 200, area: 0 },
@@ -1058,7 +1058,7 @@ class NetworkSimulator {
             });
         });
         
-        
+        // Connect ABRs in backbone (Area 0)
         const backboneConnections = [
             { from: 'ABR1', to: 'ABR2', cost: 10, area: 0 },
             { from: 'ABR2', to: 'ABR3', cost: 15, area: 0 }
@@ -1069,22 +1069,22 @@ class NetworkSimulator {
             this.createExampleLink(conn.from, conn.to, conn.cost, conn.area, linkId);
         });
         
-        
+        // Create internal routers for each area
         const areaRouters = [
-            
+            // Area 1 routers (connected to ABR1)
             { id: 'R1-A1', abr: 'ABR1', area: 1, x: 100, y: 100 },
             { id: 'R2-A1', abr: 'ABR1', area: 1, x: 200, y: 100 },
             
-            
+            // Area 2 routers (connected to ABR2)
             { id: 'R1-A2', abr: 'ABR2', area: 2, x: 400, y: 100 },
             { id: 'R2-A2', abr: 'ABR2', area: 2, x: 500, y: 100 },
             
-            
+            // Area 3 routers (connected to ABR3)
             { id: 'R1-A3', abr: 'ABR3', area: 3, x: 600, y: 100 },
             { id: 'R2-A3', abr: 'ABR3', area: 3, x: 700, y: 100 }
         ];
         
-        
+        // Create area routers
         areaRouters.forEach(router => {
             const routerObj = {
                 id: router.id,
@@ -1114,20 +1114,20 @@ class NetworkSimulator {
                 position: { x: router.x, y: router.y }
             });
             
-            
+            // Connect to ABR
             const linkId = `area${router.area}_${router.id}`;
             this.createExampleLink(router.abr, router.id, 5, router.area, linkId);
         });
         
-        
+        // Create area mesh networks
         const areaMesh = [
-            
+            // Area 1 mesh
             { from: 'R1-A1', to: 'R2-A1', cost: 10, area: 1 },
             
-            
+            // Area 2 mesh
             { from: 'R1-A2', to: 'R2-A2', cost: 15, area: 2 },
             
-            
+            // Area 3 mesh
             { from: 'R1-A3', to: 'R2-A3', cost: 20, area: 3 }
         ];
         
@@ -1136,17 +1136,17 @@ class NetworkSimulator {
             this.createExampleLink(conn.from, conn.to, conn.cost, conn.area, linkId);
         });
         
-        
+        // Add end devices in each area
         const areaDevices = [
-            
+            // Area 1 devices
             { id: 'PC-A1', type: 'pc', router: 'R1-A1', area: 1, x: 50, y: 50 },
             { id: 'Server-A1', type: 'server', router: 'R2-A1', area: 1, x: 250, y: 50 },
             
-            
+            // Area 2 devices
             { id: 'Laptop-A2', type: 'laptop', router: 'R1-A2', area: 2, x: 350, y: 50 },
             { id: 'Phone-A2', type: 'phone', router: 'R2-A2', area: 2, x: 550, y: 50 },
             
-            
+            // Area 3 devices
             { id: 'PC-A3', type: 'pc', router: 'R1-A3', area: 3, x: 550, y: 50 },
             { id: 'Server-A3', type: 'server', router: 'R2-A3', area: 3, x: 750, y: 50 }
         ];
@@ -1175,7 +1175,7 @@ class NetworkSimulator {
                 position: { x: device.x, y: device.y }
             });
             
-            
+            // Connect to router
             const linkId = `access_${deviceId}`;
             this.createExampleLink(device.router, deviceId, 1, device.area, linkId, 'access');
         });
@@ -1195,7 +1195,7 @@ class NetworkSimulator {
         this.clearAll();
         this.logCLI('Loading Complex Network Example...', 'info');
         
-        
+        // Create core routers (Area 0)
         const coreRouters = [
             { id: 'Core1', x: 300, y: 300, area: 0 },
             { id: 'Core2', x: 500, y: 300, area: 0 },
@@ -1232,7 +1232,7 @@ class NetworkSimulator {
             });
         });
         
-        
+        // Connect core routers (triangle)
         const coreConnections = [
             { from: 'Core1', to: 'Core2', cost: 5, area: 0 },
             { from: 'Core2', to: 'Core3', cost: 5, area: 0 },
@@ -1244,17 +1244,17 @@ class NetworkSimulator {
             this.createExampleLink(conn.from, conn.to, conn.cost, conn.area, linkId);
         });
         
-        
+        // Create distribution layer (different areas)
         const distributionRouters = [
-            
+            // Connected to Core1
             { id: 'Dist1-A1', core: 'Core1', area: 1, x: 200, y: 200 },
             { id: 'Dist2-A1', core: 'Core1', area: 1, x: 200, y: 400 },
             
-            
+            // Connected to Core2
             { id: 'Dist1-A2', core: 'Core2', area: 2, x: 600, y: 200 },
             { id: 'Dist2-A2', core: 'Core2', area: 2, x: 600, y: 400 },
             
-            
+            // Connected to Core3
             { id: 'Dist1-A3', core: 'Core3', area: 3, x: 400, y: 50 }
         ];
         
@@ -1287,12 +1287,12 @@ class NetworkSimulator {
                 position: { x: router.x, y: router.y }
             });
             
-            
+            // Connect to core
             const linkId = `dist_${router.id}`;
             this.createExampleLink(router.core, router.id, 10, router.area, linkId);
         });
         
-        
+        // Create access layer switches
         const switches = [
             { id: 'SW1-A1', router: 'Dist1-A1', area: 1, x: 100, y: 150 },
             { id: 'SW2-A1', router: 'Dist2-A1', area: 1, x: 100, y: 450 },
@@ -1323,26 +1323,26 @@ class NetworkSimulator {
                 position: { x: sw.x, y: sw.y }
             });
             
-            
+            // Connect to distribution router
             const linkId = `switch_${sw.id}`;
             this.createExampleLink(sw.router, sw.id, 1, sw.area, linkId, 'access');
         });
         
-        
+        // Create end devices
         const endDevices = [
-            
+            // Area 1 devices
             { id: 'PC1-A1', type: 'pc', switch: 'SW1-A1', x: 50, y: 100 },
             { id: 'PC2-A1', type: 'pc', switch: 'SW1-A1', x: 50, y: 200 },
             { id: 'Server-A1', type: 'server', switch: 'SW2-A1', x: 50, y: 400 },
             { id: 'Laptop-A1', type: 'laptop', switch: 'SW2-A1', x: 50, y: 500 },
             
-            
+            // Area 2 devices
             { id: 'PC1-A2', type: 'pc', switch: 'SW1-A2', x: 750, y: 100 },
             { id: 'PC2-A2', type: 'pc', switch: 'SW1-A2', x: 750, y: 200 },
             { id: 'Server-A2', type: 'server', switch: 'SW2-A2', x: 750, y: 400 },
             { id: 'Phone-A2', type: 'phone', switch: 'SW2-A2', x: 750, y: 500 },
             
-            
+            // Area 3 devices
             { id: 'Admin-PC', type: 'pc', switch: 'SW1-A3', x: 350, y: -50 },
             { id: 'NAS', type: 'server', switch: 'SW1-A3', x: 450, y: -50 }
         ];
@@ -1371,7 +1371,7 @@ class NetworkSimulator {
                 position: { x: device.x, y: device.y }
             });
             
-            
+            // Connect to switch
             const linkId = `device_${deviceId}`;
             this.createExampleLink(device.switch, deviceId, 1, 0, linkId, 'access');
         });
@@ -1405,7 +1405,7 @@ class NetworkSimulator {
         
         this.links.set(linkId, link);
         
-        
+        // Add interfaces
         source.interfaces.push({
             id: `eth${source.interfaces.length}`,
             connectedTo: targetId,
@@ -1424,7 +1424,7 @@ class NetworkSimulator {
             state: 'up'
         });
         
-        
+        // Add OSPF neighbors if applicable
         if (type === 'ospf' && source.type === 'router' && target.type === 'router') {
             if (!source.ospf) source.ospf = { enabled: true, area: area, neighbors: [], lsdb: {}, routingTable: [] };
             if (!target.ospf) target.ospf = { enabled: true, area: area, neighbors: [], lsdb: {}, routingTable: [] };
@@ -1444,7 +1444,7 @@ class NetworkSimulator {
             });
         }
         
-        
+        // Add to cytoscape
         this.cy.add({
             group: 'edges',
             data: {
@@ -1459,12 +1459,12 @@ class NetworkSimulator {
         });
     }
 
-    
+    // ========== OSPF SIMULATION ==========
 
     async simulateOSPF() {
         this.logCLI('Starting OSPF simulation...', 'info');
         
-        
+        // Get topology data
         const topology = {
             devices: Array.from(this.devices.values()).map(device => ({
                 id: device.id,
@@ -1494,14 +1494,14 @@ class NetworkSimulator {
             timestamp: new Date().toISOString()
         };
         
-        
+        // Prepare request data
         const requestData = {
             topology: topology,
             step_by_step: true
         };
         
         try {
-            const response = await fetch("/api/ospf", {
+            const response = await fetch('http://localhost:8000/ospf', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -1524,7 +1524,7 @@ class NetworkSimulator {
                     this.logCLI(`ABRs identified: ${result.abrs.join(', ')}`);
                 }
                 
-                
+                // Store steps for step-by-step animation
                 if (result.steps) {
                     this.ospfSteps = result.steps;
                     this.ospfStepIndex = 0;
@@ -1532,7 +1532,7 @@ class NetworkSimulator {
                     this.logCLI(`OSPF simulation has ${this.ospfSteps.length} steps. Use 'Step OSPF' button to animate.`);
                 }
                 
-                
+                // Update routing tables
                 if (result.routing_tables && result.routing_tables.length > 0) {
                     result.routing_tables.forEach(rt => {
                         const device = this.devices.get(rt.router);
@@ -1546,7 +1546,7 @@ class NetworkSimulator {
                     this.logCLI(`Updated ${result.routing_tables.length} routing tables`);
                 }
                 
-                
+                // Highlight ABRs
                 if (result.abrs) {
                     result.abrs.forEach(abrId => {
                         const node = this.cy.getElementById(abrId);
@@ -1558,11 +1558,11 @@ class NetworkSimulator {
                     });
                 }
                 
-                
+                // Update device info
                 this.updateDeviceInfo();
                 this.updateStatus();
                 
-                
+                // Show step panel
                 this.showStepPanel();
                 
             } else {
@@ -1577,7 +1577,7 @@ class NetworkSimulator {
     }
 
     runLocalOSPF() {
-        
+        // Simple local OSPF simulation for testing
         this.ospfSteps = [
             {
                 type: "hello",
@@ -1619,10 +1619,10 @@ class NetworkSimulator {
         this.showStepPanel();
         this.logCLI('Local OSPF simulation completed with 5 steps');
         
-        
+        // Update sample routing tables for all routers
         this.devices.forEach((device, id) => {
             if (device.type === 'router' && device.ospf) {
-                
+                // Create sample routing table
                 const routes = [];
                 this.devices.forEach((targetDevice, targetId) => {
                     if (targetId !== id && targetDevice.type === 'router') {
@@ -1640,7 +1640,7 @@ class NetworkSimulator {
     }
 
     findNextHop(source, destination) {
-        
+        // Simple next hop finding for local simulation
         const neighbors = this.devices.get(source)?.ospf?.neighbors || [];
         if (neighbors.length > 0) {
             return neighbors[0].routerId;
@@ -1664,15 +1664,15 @@ class NetworkSimulator {
         const step = this.ospfSteps[this.ospfStepIndex];
         this.logCLI(`=== OSPF Step ${this.ospfStepIndex + 1}/${this.ospfSteps.length}: ${step.description} ===`, 'ospf-step');
         
-        
+        // Execute step
         this.executeOSPFStep(step);
         
-        
+        // Update step panel
         this.updateStepPanel();
         
         this.ospfStepIndex++;
         
-        
+        // If we've completed all steps, reset index
         if (this.ospfStepIndex >= this.ospfSteps.length) {
             this.logCLI('OSPF simulation completed!', 'info');
         }
@@ -1700,14 +1700,14 @@ class NetworkSimulator {
                 break;
         }
         
-        
+        // Update device info if a specific device is selected
         if (step.router_id && this.selectedDevice === step.router_id) {
             this.updateDeviceInfo();
         }
     }
 
     animateOSPFHello(step) {
-        
+        // Highlight router
         const routerNode = this.cy.getElementById(step.router_id);
         if (routerNode) {
             routerNode.animate({
@@ -1719,7 +1719,7 @@ class NetworkSimulator {
             }, 1500);
         }
         
-        
+        // Animate Hello packets on edges
         step.neighbors.forEach(neighborId => {
             const edge = this.cy.edges().filter(edge => 
                 (edge.data('source') === step.router_id && edge.data('target') === neighborId) ||
@@ -1730,12 +1730,12 @@ class NetworkSimulator {
                 edge.addClass('ospf-hello');
                 setTimeout(() => edge.removeClass('ospf-hello'), 1000);
                 
-                
+                // Animate packet
                 this.animatePacket(step.router_id, neighborId, '#ff9966', 'HELLO');
             }
         });
         
-        
+        // Update neighbor states
         setTimeout(() => {
             const router = this.devices.get(step.router_id);
             if (router && router.ospf) {
@@ -1751,7 +1751,7 @@ class NetworkSimulator {
     }
 
     animateLSAGeneration(step) {
-        
+        // Highlight router
         const routerNode = this.cy.getElementById(step.router_id);
         if (routerNode) {
             routerNode.animate({
@@ -1763,7 +1763,7 @@ class NetworkSimulator {
             }, 1500);
         }
         
-        
+        // Update LSDB display
         setTimeout(() => {
             const router = this.devices.get(step.router_id);
             if (router && router.ospf) {
@@ -1774,7 +1774,7 @@ class NetworkSimulator {
     }
 
     animateLSAFlooding(step) {
-        
+        // Animate LSA packet along edge
         const edge = this.cy.edges().filter(edge => 
             (edge.data('source') === step.source && edge.data('target') === step.target) ||
             (edge.data('source') === step.target && edge.data('target') === step.source)
@@ -1784,11 +1784,11 @@ class NetworkSimulator {
             edge.addClass('ospf-lsa');
             setTimeout(() => edge.removeClass('ospf-lsa'), 1500);
             
-            
+            // Animate packet
             this.animatePacket(step.source, step.target, '#00ffaa', 'LSA');
         }
         
-        
+        // Update target router's LSDB
         setTimeout(() => {
             const router = this.devices.get(step.target);
             if (router && router.ospf) {
@@ -1799,7 +1799,7 @@ class NetworkSimulator {
     }
 
     animateDijkstra(step) {
-        
+        // Highlight router
         const routerNode = this.cy.getElementById(step.router_id);
         if (routerNode) {
             routerNode.animate({
@@ -1811,7 +1811,7 @@ class NetworkSimulator {
             }, 2000);
         }
         
-        
+        // Animate edges in the shortest path tree
         if (step.shortest_path_edges) {
             step.shortest_path_edges.forEach(([src, dst]) => {
                 const edge = this.cy.edges().filter(edge => 
@@ -1839,7 +1839,7 @@ class NetworkSimulator {
         if (router && router.ospf) {
             router.ospf.routingTable = step.routes || router.ospf.routingTable;
             
-            
+            // Flash router to indicate update
             const routerNode = this.cy.getElementById(step.router_id);
             if (routerNode) {
                 routerNode.animate({
@@ -1929,7 +1929,7 @@ class NetworkSimulator {
         const device = this.devices.get(this.selectedDevice);
         if (!device) return;
         
-        
+        // Get areas this device is connected to
         const areas = new Set();
         device.interfaces.forEach(intf => {
             const link = this.links.get(intf.linkId);
@@ -1991,7 +1991,7 @@ class NetworkSimulator {
         
         html += `</div>`;
         
-        
+        // Add interfaces details
         if (device.interfaces.length > 0) {
             html += `<div class="device-info"><h3>Interfaces</h3>`;
             device.interfaces.forEach(intf => {
@@ -2011,7 +2011,7 @@ class NetworkSimulator {
             html += `</div>`;
         }
         
-        
+        // Add OSPF neighbors for routers
         if (device.ospf && device.ospf.neighbors.length > 0) {
             html += `<div class="device-info"><h3>OSPF Neighbors</h3>`;
             device.ospf.neighbors.forEach(neighbor => {
@@ -2025,7 +2025,7 @@ class NetworkSimulator {
             html += `</div>`;
         }
         
-        
+        // Add LSDB for routers
         if (device.ospf && Object.keys(device.ospf.lsdb).length > 0) {
             html += `<div class="device-info"><h3>Link State Database</h3>`;
             Object.entries(device.ospf.lsdb).forEach(([lsaId, lsa]) => {
@@ -2043,7 +2043,7 @@ class NetworkSimulator {
             html += `</div>`;
         }
         
-        
+        // Add routing table for routers
         if (device.ospf && device.ospf.routingTable.length > 0) {
             html += `<div class="device-info"><h3>Routing Table (${device.ospf.routingTable.length} routes)</h3>`;
             device.ospf.routingTable.forEach(route => {
@@ -2094,7 +2094,7 @@ class NetworkSimulator {
             </div>
         `;
         
-        
+        // Add connected device info
         const dev1 = this.devices.get(link.source);
         const dev2 = this.devices.get(link.target);
         
@@ -2114,7 +2114,7 @@ class NetworkSimulator {
             `;
         }
         
-        
+        // Add interface info
         const intf1 = dev1?.interfaces.find(i => i.linkId === link.id);
         const intf2 = dev2?.interfaces.find(i => i.linkId === link.id);
         
@@ -2143,7 +2143,7 @@ class NetworkSimulator {
         const link = this.links.get(this.selectedLink);
         if (!link) return;
         
-        
+        // Populate edit modal
         document.getElementById('edit-link-id').value = link.id;
         document.getElementById('edit-link-devices').value = `${link.source} ↔ ${link.target}`;
         document.getElementById('edit-link-cost').value = link.cost;
@@ -2164,25 +2164,25 @@ class NetworkSimulator {
         const link = this.links.get(linkId);
         if (!link) return;
         
-        
+        // Store old values for comparison
         const oldCost = link.cost;
         const oldArea = link.area;
         const oldType = link.type;
         
-        
+        // Update link object
         link.cost = newCost;
         link.area = newArea;
         link.type = newType;
         link.label = newType === 'ospf' ? `Cost: ${newCost}, Area: ${newArea}` : 'Access';
         
-        
+        // Update cytoscape edge
         const edge = this.cy.getElementById(linkId);
         edge.data('label', link.label);
         edge.data('type', newType);
         edge.data('cost', newCost);
         edge.data('area', newArea);
         
-        
+        // Update edge style based on type
         if (newType === 'ospf') {
             edge.style('line-color', '#00ffaa');
             edge.style('target-arrow-color', '#00ffaa');
@@ -2193,7 +2193,7 @@ class NetworkSimulator {
             edge.style('line-style', 'dashed');
         }
         
-        
+        // Update device interfaces
         const dev1 = this.devices.get(link.source);
         const dev2 = this.devices.get(link.target);
         
@@ -2211,10 +2211,10 @@ class NetworkSimulator {
             }
         }
         
-        
+        // Update OSPF neighbors if type changed
         if (oldType !== newType) {
             if (oldType === 'ospf' && newType !== 'ospf') {
-                
+                // Remove OSPF neighbor entries
                 if (dev1 && dev1.ospf) {
                     dev1.ospf.neighbors = dev1.ospf.neighbors.filter(n => n.routerId !== link.target);
                 }
@@ -2222,7 +2222,7 @@ class NetworkSimulator {
                     dev2.ospf.neighbors = dev2.ospf.neighbors.filter(n => n.routerId !== link.source);
                 }
             } else if (oldType !== 'ospf' && newType === 'ospf') {
-                
+                // Add OSPF neighbor entries
                 if (dev1 && dev1.type === 'router' && dev2 && dev2.type === 'router') {
                     if (!dev1.ospf) dev1.ospf = { enabled: true, area: 0, neighbors: [], lsdb: {}, routingTable: [] };
                     if (!dev2.ospf) dev2.ospf = { enabled: true, area: 0, neighbors: [], lsdb: {}, routingTable: [] };
@@ -2245,7 +2245,7 @@ class NetworkSimulator {
                 }
             }
         } else if (newType === 'ospf' && (oldArea !== newArea || oldCost !== newCost)) {
-            
+            // Update OSPF neighbor area and cost
             if (dev1 && dev1.ospf) {
                 const neighbor1 = dev1.ospf.neighbors.find(n => n.routerId === link.target);
                 if (neighbor1) {
@@ -2260,12 +2260,12 @@ class NetworkSimulator {
             }
         }
         
-        
+        // Hide modal and update
         this.hideModal('edit-link-modal');
         this.updateLinkInfo();
         this.logCLI(`Updated link ${linkId}: Cost=${newCost}, Area=${newArea}, Type=${newType}`);
         
-        
+        // Trigger OSPF recalculation if OSPF link
         if (newType === 'ospf') {
             setTimeout(() => this.simulateOSPF(), 300);
         }
@@ -2285,7 +2285,7 @@ class NetworkSimulator {
         
         const { source, target, type } = link;
         
-        
+        // Remove from devices' interfaces
         const dev1 = this.devices.get(source);
         const dev2 = this.devices.get(target);
         
@@ -2297,7 +2297,7 @@ class NetworkSimulator {
             dev2.interfaces = dev2.interfaces.filter(i => i.linkId !== linkId);
         }
         
-        
+        // Remove OSPF neighbor entries if applicable
         if (type === 'ospf') {
             if (dev1 && dev1.ospf) {
                 dev1.ospf.neighbors = dev1.ospf.neighbors.filter(n => n.routerId !== target);
@@ -2307,22 +2307,22 @@ class NetworkSimulator {
             }
         }
         
-        
+        // Remove from cytoscape
         this.cy.remove(`#${linkId}`);
         
-        
+        // Remove from links map
         this.links.delete(linkId);
         
-        
+        // Update
         this.deselectLink();
         this.updateStatus();
         this.logCLI(`Deleted link between ${source} and ${target}`);
         
-        
+        // Clear device info display
         const container = document.getElementById('device-info-content');
         container.innerHTML = '<div class="device-info"><h3>No Selection</h3><p>Click on a device or link to view information</p></div>';
         
-        
+        // Trigger OSPF recalculation if needed
         if (type === 'ospf') {
             setTimeout(() => this.simulateOSPF(), 300);
         }
@@ -2340,16 +2340,16 @@ class NetworkSimulator {
         const device = this.devices.get(deviceId);
         if (!device) return;
         
-        
+        // Delete all connected links first
         device.interfaces.forEach(intf => {
             this.deleteLink(intf.linkId);
         });
         
-        
+        // Remove device
         this.devices.delete(deviceId);
         this.cy.remove(`#${deviceId}`);
         
-        
+        // Update
         this.deselectDevice();
         this.updateStatus();
         this.logCLI(`Deleted device: ${deviceId}`);
@@ -2359,7 +2359,7 @@ class NetworkSimulator {
         document.getElementById('status-devices').textContent = this.devices.size;
         document.getElementById('status-links').textContent = this.links.size;
         
-        
+        // Count OSPF areas
         const areas = new Set();
         this.links.forEach(link => {
             if (link.type === 'ospf') {
@@ -2368,7 +2368,7 @@ class NetworkSimulator {
         });
         document.getElementById('status-areas').textContent = areas.size;
         
-        
+        // Update OSPF step status
         if (this.ospfSteps.length > 0) {
             document.getElementById('status-message').textContent = 
                 `OSPF: Step ${this.ospfStepIndex + 1}/${this.ospfSteps.length}`;
@@ -2420,9 +2420,9 @@ class NetworkSimulator {
     }
 
     showOSPFAreas() {
-        
+        // Color code OSPF areas
         const areaColors = {
-            0: '#00ffaa', 
+            0: '#00ffaa', // Backbone area
             1: '#ff9966',
             2: '#66ccff',
             3: '#cc99ff',
@@ -2443,7 +2443,7 @@ class NetworkSimulator {
     }
 
     showRoutingTables() {
-        
+        // Highlight routing paths for selected device
         if (!this.selectedDevice) {
             this.logCLI('Select a router to show its routing paths', 'error');
             return;
@@ -2455,10 +2455,10 @@ class NetworkSimulator {
             return;
         }
         
-        
+        // Clear previous highlights
         this.cy.edges().removeClass('ospf-route');
         
-        
+        // Highlight routes
         device.ospf.routingTable.forEach(route => {
             if (route.path && route.path.length > 1) {
                 for (let i = 0; i < route.path.length - 1; i++) {
@@ -2485,7 +2485,7 @@ class NetworkSimulator {
     }
 
     generateIP(type) {
-        
+        // Generate unique IP based on device type
         const baseIPs = {
             router: '10.0.0.',
             switch: '192.168.1.',
@@ -2537,7 +2537,7 @@ class NetworkSimulator {
         document.getElementById(modalId).style.display = 'none';
     }
 
-    
+    // ========== CLI METHODS ==========
 
     logCLI(message, type = 'info') {
         const output = document.getElementById('cli-output');
@@ -2555,10 +2555,10 @@ class NetworkSimulator {
         
         if (!command) return;
         
-        
+        // Log command
         this.logCLI(`Router# ${command}`, 'cmd');
         
-        
+        // Process command
         const parts = command.split(' ');
         const cmd = parts[0].toLowerCase();
         
@@ -2622,7 +2622,7 @@ class NetworkSimulator {
             this.logCLI(`  Devices: ${this.devices.size}`);
             this.logCLI(`  Links: ${this.links.size}`);
             
-            
+            // Count routers by area
             const areaRouters = {};
             this.devices.forEach(device => {
                 if (device.type === 'router' && device.ospf) {
@@ -2766,7 +2766,7 @@ class NetworkSimulator {
             this.logCLI(`Pinging ${destination} from ${this.selectedDevice}...`);
             this.logCLI(`Path: ${path.join(' -> ')}`);
             
-            
+            // Simulate ping with timeout
             setTimeout(() => {
                 const rand = Math.random();
                 if (rand > 0.3) {
@@ -2871,14 +2871,14 @@ class NetworkSimulator {
     }
 
     loadTopology(topology) {
-        
+        // Clear existing topology
         this.clearAll();
         
-        
+        // Load devices
         topology.devices.forEach(deviceData => {
             this.devices.set(deviceData.id, deviceData);
             
-            
+            // Add to cytoscape
             this.cy.add({
                 group: 'nodes',
                 data: { 
@@ -2891,11 +2891,11 @@ class NetworkSimulator {
             });
         });
         
-        
+        // Load links
         topology.links.forEach(linkData => {
             this.links.set(linkData.id, linkData);
             
-            
+            // Add to cytoscape
             this.cy.add({
                 group: 'edges',
                 data: {
@@ -2910,7 +2910,7 @@ class NetworkSimulator {
             });
         });
         
-        
+        // Update counters
         this.nextDeviceId = Math.max(...Array.from(this.devices.keys()).map(id => {
             const match = id.match(/(\D+)(\d+)/);
             return match ? parseInt(match[2]) : 0;
@@ -2921,7 +2921,7 @@ class NetworkSimulator {
             return match ? parseInt(match[1]) : 0;
         })) + 1;
         
-        
+        // Update UI
         this.updateStatus();
         this.cy.fit();
     }
@@ -2935,7 +2935,7 @@ class NetworkSimulator {
     }
 }
 
-
+// Initialize simulator when page loads
 document.addEventListener('DOMContentLoaded', () => {
     window.simulator = new NetworkSimulator();
 });
