@@ -1,4 +1,4 @@
-# backend/main.py
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -10,16 +10,16 @@ import time
 
 app = FastAPI(title="Network Simulator Backend", description="OSPF Simulation Backend API")
 
-# Add CORS middleware
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify exact origins
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Data models
+
 class Interface(BaseModel):
     id: str
     connectedTo: str
@@ -81,7 +81,7 @@ class OSPFSimulator:
     
     def __init__(self):
         self.graph = nx.Graph()
-        self.lsdb = {}  # Global Link State Database
+        self.lsdb = {}  
         self.areas = {}
         self.steps = []
         
@@ -89,7 +89,7 @@ class OSPFSimulator:
         """Build network graph from topology"""
         self.graph.clear()
         
-        # Add nodes
+      
         for device in topology.devices:
             self.graph.add_node(device.id, 
                                type=device.type,
@@ -97,7 +97,7 @@ class OSPFSimulator:
                                area=device.ospf.area if device.ospf else 0,
                                device_data=device.dict())
         
-        # Add edges (links)
+   
         for link in topology.links:
             if link.type == 'ospf':
                 self.graph.add_edge(link.source, link.target,
@@ -118,22 +118,19 @@ class OSPFSimulator:
         self.steps = []
         self.build_topology(topology)
         
-        # Step 1: Neighbor Discovery (Hello packets)
+        
         self.step_neighbor_discovery(topology)
         
-        # Step 2: LSA Generation
+
         self.step_lsa_generation(topology)
-        
-        # Step 3: LSA Flooding
+
         self.step_lsa_flooding(topology)
         
-        # Step 4: Dijkstra Calculation
+   
         self.step_dijkstra_calculation(topology)
-        
-        # Step 5: Routing Table Update
+ 
         routing_tables = self.step_routing_table_update(topology)
-        
-        # Identify areas
+
         areas = self.identify_areas()
         
         if step_by_step:
@@ -159,17 +156,14 @@ class OSPFSimulator:
         routers = [d for d in topology.devices if d.type == 'router' and d.ospf]
         
         for router in routers:
-            # Find OSPF neighbors
             ospf_neighbors = []
             for interface in router.interfaces:
                 if interface.type == 'ospf':
-                    # Find connected device
                     for link in topology.links:
                         if link.id == interface.linkId:
                             neighbor_id = link.target if link.source == router.id else link.source
                             ospf_neighbors.append(neighbor_id)
             
-            # Add step
             self.steps.append({
                 "type": "hello",
                 "description": f"Router {router.id} sends Hello packets",
@@ -178,7 +172,6 @@ class OSPFSimulator:
                 "neighbor_state": "2-Way"
             })
             
-            # Update neighbor states
             neighbor_updates = []
             for neighbor_id in ospf_neighbors:
                 neighbor_updates.append({
@@ -199,7 +192,6 @@ class OSPFSimulator:
         routers = [d for d in topology.devices if d.type == 'router' and d.ospf]
         
         for router in routers:
-            # Generate LSA
             lsa = {
                 "id": f"LSA-{router.id}",
                 "router_id": router.id,
@@ -210,7 +202,6 @@ class OSPFSimulator:
                 "links": []
             }
             
-            # Add links from interfaces
             for interface in router.interfaces:
                 if interface.type == 'ospf':
                     link = next((l for l in topology.links if l.id == interface.linkId), None)
@@ -222,10 +213,8 @@ class OSPFSimulator:
                             "interface": interface.id
                         })
             
-            # Store in global LSDB
             self.lsdb[router.id] = lsa
             
-            # Add step
             self.steps.append({
                 "type": "lsa_generation",
                 "description": f"Router {router.id} generates LSA",
@@ -238,11 +227,9 @@ class OSPFSimulator:
         """Step 3: Flood LSAs through the network"""
         routers = [d for d in topology.devices if d.type == 'router' and d.ospf]
         
-        # Simple flooding simulation
         for router in routers:
             for neighbor in self.graph.neighbors(router.id):
                 if self.graph[router.id][neighbor].get('type') == 'ospf':
-                    # Simulate LSA packet transmission
                     self.steps.append({
                         "type": "lsa_flooding",
                         "description": f"Flooding LSA from {router.id} to {neighbor}",
@@ -257,17 +244,14 @@ class OSPFSimulator:
         routers = [d for d in topology.devices if d.type == 'router' and d.ospf]
         
         for router in routers:
-            # Create subgraph for OSPF area
             ospf_edges = [(u, v) for u, v, d in self.graph.edges(data=True) 
                          if d.get('type') == 'ospf']
             
             if not ospf_edges:
                 continue
                 
-            # Create area-specific graph
             area_graph = nx.Graph()
             
-            # Add OSPF routers and links
             for device in routers:
                 area_graph.add_node(device.id)
             
@@ -275,12 +259,9 @@ class OSPFSimulator:
                 if data.get('type') == 'ospf':
                     area_graph.add_edge(u, v, weight=data['weight'])
             
-            # Run Dijkstra's algorithm
             try:
-                # Calculate shortest paths from this router
                 paths = nx.single_source_dijkstra_path(area_graph, router.id)
                 
-                # Find edges in shortest path tree
                 shortest_path_edges = []
                 for target, path in paths.items():
                     if target != router.id and len(path) > 1:
@@ -289,7 +270,6 @@ class OSPFSimulator:
                             if edge not in shortest_path_edges and (edge[1], edge[0]) not in shortest_path_edges:
                                 shortest_path_edges.append(edge)
                 
-                # Add step
                 self.steps.append({
                     "type": "dijkstra",
                     "description": f"Router {router.id} runs Dijkstra's algorithm",
@@ -306,7 +286,6 @@ class OSPFSimulator:
         routing_tables = []
         
         for router in routers:
-            # Create subgraph for OSPF area
             ospf_edges = [(u, v) for u, v, d in self.graph.edges(data=True) 
                          if d.get('type') == 'ospf']
             
@@ -320,10 +299,8 @@ class OSPFSimulator:
                 })
                 continue
                 
-            # Create area-specific graph
             area_graph = nx.Graph()
             
-            # Add OSPF routers and links
             for device in routers:
                 area_graph.add_node(device.id)
             
@@ -331,10 +308,8 @@ class OSPFSimulator:
                 if data.get('type') == 'ospf':
                     area_graph.add_edge(u, v, weight=data['weight'])
             
-            # Build routing table
             routes = []
             try:
-                # Calculate shortest paths from this router
                 paths = nx.single_source_dijkstra_path(area_graph, router.id)
                 lengths = nx.single_source_dijkstra_path_length(area_graph, router.id)
                 
@@ -401,18 +376,15 @@ class PingSimulator:
             for device in devices:
                 G.add_node(device['id'], type=device['type'])
             
-            # Add links
             links = topology.get('links', [])
             for link in links:
                 G.add_edge(link['source'], link['target'], 
                           type=link['type'],
                           cost=link.get('cost', 1))
             
-            # Find shortest path using Dijkstra
             try:
                 path = nx.shortest_path(G, source, destination, weight='cost')
                 
-                # Calculate total hops
                 hops = len(path) - 1
                 
                 return {
@@ -470,16 +442,6 @@ async def health_check():
 
 @app.post("/ospf")
 async def run_ospf_simulation(request: OSPSimulation):
-    """
-    Run OSPF simulation on the provided topology.
-    
-    This endpoint:
-    1. Builds the network graph from topology
-    2. Generates LSAs for each router
-    3. Floods LSAs through the network
-    4. Calculates routing tables using Dijkstra's algorithm
-    5. Returns routing tables and area information
-    """
     try:
         result = ospf_simulator.simulate_ospf(
             request.topology, 
@@ -491,14 +453,7 @@ async def run_ospf_simulation(request: OSPSimulation):
 
 @app.post("/ping")
 async def calculate_ping_path(request: PingRequest):
-    """
-    Calculate ping path between source and destination.
-    
-    This endpoint:
-    1. Builds graph from topology
-    2. Finds shortest path using graph algorithms
-    3. Returns hop-by-hop path for animation
-    """
+  
     try:
         result = ping_simulator.calculate_ping_path(
             request.source,
@@ -511,10 +466,7 @@ async def calculate_ping_path(request: PingRequest):
 
 @app.get("/ospf/dijkstra-example")
 async def dijkstra_example():
-    """
-    Example of Dijkstra's algorithm for educational purposes
-    """
-    # Create a simple example graph
+    
     G = nx.Graph()
     G.add_edge('A', 'B', weight=4)
     G.add_edge('A', 'C', weight=2)
@@ -524,7 +476,7 @@ async def dijkstra_example():
     G.add_edge('C', 'E', weight=10)
     G.add_edge('D', 'E', weight=2)
     
-    # Run Dijkstra from node A
+  
     path_lengths = nx.single_source_dijkstra_path_length(G, 'A')
     paths = nx.single_source_dijkstra_path(G, 'A')
     
